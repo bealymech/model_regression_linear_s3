@@ -1,0 +1,333 @@
+---
+title: "Modèles de Régression Régularisée"
+author: "CHHEANG Vinha & MECH Bealy"
+date: "10/21/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# II. Real estate data
+
+```{r}
+tab=read.table("housedata.csv",header=TRUE,sep=',')
+head(tab)
+names(tab)
+dim(tab)
+```
+
+
+```{r}
+medianHousePrice=median(tab$price)
+medHousePriceBin=as.numeric(tab$price > medianHousePrice)
+head(medHousePriceBin)
+```
+
+Right now, to be able apply Logistic Regression we will build a new data with 'medHousePriceBin'.
+
+```{r}
+tab1 <- tab[, 4:21]
+X <- cbind(tab1, medHousePriceBin) 
+head(X)
+str(X)
+```
+
+
+```{r}
+dim(X)
+```
+
+There are $n = 21613$ observation and $p = 18$ variables.
+
+```{r}
+library(corrplot)
+corrplot(cor(X), is.corr = T, method = "ellipse", number.cex= .6, addCoef.col= "black")
+```
+
+
+
+## 1. Split the dataset into training and testing sets:
+
+If we don’t want to over-evaluate the model, we cannot test it on the data it has already used during the
+training process. So we decide to split the dataset into $80$% for training and $20$% for testing.
+
+
+
+```{r}
+set.seed(1234)
+training_indexes <- sample(1:21613, size=round(21613*0.8))
+# the training dataset
+X_train <- X[training_indexes,]
+# the testing dataset
+X_test <- X[-training_indexes,]
+testing_indexes <- as.numeric(rownames(X_test))
+# medHousePriceBin, the target values to test (20%)
+Y_test  <- medHousePriceBin[testing_indexes]
+Y_train <- medHousePriceBin[training_indexes]
+
+```
+
+
+## 2. Simple Logistic Regression:
+
+```{r}
+res = glm(medHousePriceBin~. , family = binomial, data =X_train)
+summary(res)
+```
+
++ For instant, we can conclude that there are 3 variables (" sqft_lot15 " , "long" " yr_renovated ") are not influence on the model logistic with variable target: 'medHousePriceBin'.
+
++ For the variable "sqft_basement", we don't know information yet, so we can not conclude that it's useful for model or not. However, we will check it by another method. 
+
+
+Let’s predict some testing values and compare with the target values:
+
+```{r}
+Y_pred <- round(predict(res, X_test[,1:18], type = "response"))
+```
+
+```{r}
+Y_pred[1:10]
+```
+
+
+```{r}
+Y_test[1:10]
+```
+
+To be able to clearly the result, we will check the Confusion Matrix:
+
+```{r}
+# Confusion Matrix:
+library(caret)
+confusionMatrix(data = as.factor(Y_pred),
+                reference = as.factor(Y_test),positive = "1")
+```
+
++ The total accuracy is $0.8439$ on data test which is pretty good. 
++ The value of Sensitivity (true positive rate) is: $0.8356$
++ The value of specificity (true negative rate) is: $0.8521$
+
+We obtained the value of specificity is greater than the value of the sensitivity (recall) which means that the model is well performance to predict the “0” than the “1” in the binary value. 
+
+
+## 3. Logistic Regression with K-Folds Cross-Validation:
+
+We use in each fold, $80$% of the dataset for training and the rest of $20$% for testing in k-folds, k=5.
+
+```{r}
+set.seed(1234)
+library("caret")
+cross5 = train(
+form = as.factor(medHousePriceBin) ~ .,
+data = X,
+trControl = trainControl(method = "cv", number = 5, savePredictions = TRUE, p = 0.8),
+method = "glm",
+family = "binomial")
+```
+
+The accuracy in each fold:
+
+```{r}
+cross5$resample$Accuracy
+```
+
+The boxplot of the accuracy of the performance for the model in k-fold:
+
+```{r}
+boxplot(cross5$resample$Accuracy, col = "blue")
+```
+
+Average accuracy:
+
+```{r}
+cross5$results$Accuracy
+```
+
+In average, using $80$% of the X to train the model leads to a performance (accuracy) of $84$% with k_fold, $k=5$.
+
+Now we will verify with k = 10, with datatrain $90$%
+
+```{r}
+set.seed(1234)
+library("caret")
+cross10 = train(
+form = as.factor(medHousePriceBin) ~ ., data = X,
+trControl = trainControl(method = "cv", number = 10, savePredictions = TRUE, p = 0.9),
+method = "glm",
+family = "binomial")
+```
+
+```{r}
+boxplot(cross10$resample$Accuracy, col = "blue")
+```
+
+Average accuracy:
+
+```{r}
+cross5$results$Accuracy
+```
+
+In average, using $90$% of the X to train the model leads to a performance (accuracy) of $84$% with k_fold, $k=10$.
+
+Therefore, the accuracy of $k-fold$ is $84$%. However, if we train more data we will get the same result. So we use $80$% of datatrain for create model.  
+
+## 4. Regularization + Variable selection
+
+Variable selection with Regression Logistic forward
+We all data for selection in $Xdata$.
+
+```{r}
+# Regression logistique Forward
+resall <- glm(medHousePriceBin~., data = X, family = binomial)
+res0   <- glm(medHousePriceBin~1, data = X, family = binomial)
+resforward <- step(res0, list(upper=resall), direction = "forward")
+```
+
+The final computed model:
+
+```{r}
+summary(resforward)
+```
+
+```{r}
+Y_forward <- round(predict(resforward, X_test[,1:18], type="response"))
+
+confusionMatrix(data = as.factor(Y_forward), reference = as.factor(Y_test), positive='1')
+```
+
+Regression logistique Forward:
+
++ Accuracy = 0.8434
++ Sensitivity (true positive rate) = 0.8347
++ Specificity (true negative rate) = 0.8521
+
+## 5. Logistic regression with $l1$ or $l2$ penalizations
+
+### a) Logistic regression with $l2$  penalization (Ridge)
+
++ $\alpha = 0$ it is Ridge Logistic Regression.
++ In Ridge regression, we use all the variables to test then chose the best one which has the smallest value of $lambda$.
+
+```{r}
+set.seed(1234)
+library(glmnet)
+mod_ridge <- cv.glmnet(x=as.matrix(X[,1:18]),
+                       y=medHousePriceBin, alpha = 0, n_fold=5, family = "binomial")
+plot(mod_ridge)
+```
+
+
++ Binomial deviance $\approx$ error of the model.
++ Log($\lambda$) = penalizing coefficients
++ When the penalizing coefficients are low, so are the binomial deviances, meaning that the model is probably better.
+
+The penalizing coefficient giving the lowest binomial deviance:
+
+```{r}
+mod_ridge$lambda.min
+```
+
+
+```{r}
+library("glmnet")
+mod_ridge_best <- glmnet(as.matrix(X_train[,1:18]), 
+                         Y_train, family = "binomial", alpha = 0, lambda = mod_ridge$lambda.min)
+coef(mod_ridge_best)
+```
+
+
+
+```{r}
+preds_ridge <- round(predict(mod_ridge_best, 
+                             as.matrix(X_test[,1:18]), type = "response"))
+
+conf_ridge_best <- confusionMatrix(data = as.factor(preds_ridge), 
+                                   reference = as.factor(Y_test), positive = '1')
+conf_ridge_best
+```
+
+Ridge Logistic Regression:
+
++ Accuracy = 0.8413
++ Sensitivity (true positive rate) = 0.8241
++ Specificity (true negative rate) = 0.8585
+
+### b) Logistic regression with $l$  penalization (Lasso)
+
++ $\alpha = 1$ it is: Lasso Logistic Regression.
+
+```{r}
+library("glmnet")
+mod_lasso <- cv.glmnet(x=as.matrix(X[,1:18]), y=medHousePriceBin, 
+                       alpha = 1, n_fold=5, family = "binomial")
+plot(mod_lasso)
+mod_lasso$lambda.min
+mod_lasso$lambda.1se
+```
+
+
+Let's run a lasso logit with the penalizing coefficient = lambda.1se:
+
+```{r}
+library("glmnet")
+mod_lasso_1se <- glmnet(as.matrix(X_train[,1:18]), Y_train, 
+                        family = "binomial", alpha = 1, lambda = mod_lasso$lambda.1se)
+coef(mod_lasso_1se)
+```
+
+
+
+```{r}
+preds_lasso <- round(predict(mod_lasso_1se, as.matrix(X_test[,1:18]), type = "response"))
+
+conf_best_lasso <- confusionMatrix(data = as.factor(preds_lasso),
+                                   reference = as.factor(Y_test),positive = '1')
+
+conf_best_lasso
+
+```
+
+Lasso Logistic Regression:
+
++ Accuracy = 0.8448
++ Sensitivity (true positive rate) = 0.8366
++ Specificity (true negative rate) = 0.8530
+. 
+
+Therefore, Logistic Regression above are the almost the same result:
+
++ Accuracy = $84$%
++ Sensitivity (true positive rate) = $83$%
++ Specificity (true negative rate) = $85$%
+
+We can say that: 2% Model better on $0$ than $1$.
+
+
+## 6. Conclusion: 
+
+```{r}
+set.seed(1234)
+errors_full <- sum((Y_pred - Y_test)^2)
+errors_forward <- sum((Y_forward - Y_test)^2)
+errors_ridge <- sum((preds_ridge - Y_test)^2)
+errors_lasso <- sum((preds_lasso - Y_test)^2)
+
+c(errors_full, errors_forward, errors_ridge, errors_lasso)
+length(Y_test)
+# the errors made during the test
+c(errors_full, errors_forward, errors_ridge, errors_lasso)/length(Y_test)
+```
+
+
+
+
+
+
+
+
+

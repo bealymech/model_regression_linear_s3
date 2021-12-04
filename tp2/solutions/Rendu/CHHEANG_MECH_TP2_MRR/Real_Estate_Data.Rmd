@@ -1,0 +1,86 @@
+---
+title: "Travaux Pratiques - Modèles de Régression régularisée"
+author: "MECH Bealy & CHHEANG Vinha"
+date: "10/10/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# IV. Real estate data
+## Load data: 
+
+```{r}
+dataHouse = read.csv("./housedata.csv")
+names(dataHouse)
+head(dataHouse)
+```
+
+
+
+```{r}
+str(dataHouse)
+```
+
+The number of observation: 21613.
+
+## A. Study the ability of regular linear model with variable selection:
+
+```{r}
+dataStudy = dataHouse[ , 3:21]
+mol = lm(dataStudy$price~. , data = dataStudy)
+summary(mol)
+plot(mol)
+```
+
+## check corrolation of all variables:
+
+```{r}
+library(corrplot)
+
+corrplot(cor(dataStudy))
+```
+
+## Backward selection:
+
+```{r}
+Regbackward=step(mol,direction='backward') 
+```
+
+```{r}
+summary(Regbackward)
+```
+
+After using backward  selection, we can not eliminate variable in model.
+However, we will check it with LASSO model.
+
+## B. LASSO model
+
+```{r}
+library(lars)
+
+dataLasso = dataHouse[ ,4:21]
+X = as.matrix(cbind(dataLasso[,-ncol(dataLasso)]))
+Y = dataHouse[ ,3]
+modelLasso = lars(X, Y, type = "lasso")
+modelLasso$beta
+modelLasso$lambda
+par(mfrow=c(1,2))
+plot(modelLasso)
+plot(c(modelLasso$lambda,0),pch=20,type="b",col="blue")
+grid()
+```
+
+We observed that all variables are useful for model.
+
+
+
+
+
+
+

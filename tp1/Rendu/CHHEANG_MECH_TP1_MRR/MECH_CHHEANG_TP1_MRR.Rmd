@@ -1,0 +1,134 @@
+---
+title: "Practical session - Modèles de Régression Linéaire"
+author: "MECH Bealy et CHHEANG Vinha"
+date: "27/09/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## IV . Application: GAFAM or BATX data set 
+### Application: Facebook data set
+
+```{r}
+tab <- data.frame(read.table("./facebook_users.csv", header = TRUE, sep = ";"))
+plot(tab)
+```
+
+We observe that our datas are nearly linear function. In order to get the best model, we just need to verify directly base on the data seems to be good enough to estimate with the up coming year.
+
+```{r}
+mod1 = lm(users ~ Year, data = tab)
+summary(mod1)
+```
+
+
+These codes below write to test statistic at level alpha = 0.001 of `X2` where `X2` refers to "Year".
+
+
+```{r}
+Y = as.matrix(tab$users)
+X1 = rep(1, 17)
+X2 = tab$Year
+X = matrix(data = c(X1,X2), ncol = 2)
+beta_est = as.matrix(mod1$coefficients)
+Y_est = X%*%beta_est
+
+#test
+n <- length(Y_est)
+p <- length(beta_est)
+eps <- sum((Y - Y_est)**2)
+sigma2 <- eps/(n-p)
+for(k in 2:p)
+{
+  if((beta_est[k]/sqrt(sigma2*(t(X)%*%X)[k,k]))> qt(1-0.001/2, df = n - p))
+  {
+    print(paste("Model does not depend on", paste("X",k)))
+  }
+  else
+  {
+    print(paste("Model depends on", paste("X",k)))
+  }
+}
+```
+
+```{r}
+plot(tab)
+abline(mod1$coefficients)
+```
+
+```{r}
+predict(mod1, data.frame(Year = 2020))
+```
+
+According to our linear line, number of Facebook users estimated is more than 2500 millions users. (R2=0.9733)
+
+## V. Real estate data
+
+```{r}
+tab1 = read.csv("./housedata.csv")
+names(tab1)
+```
+
+```{r}
+# dimension of data
+dim(tab1)
+```
+
+```{r}
+Y = matrix(tab1[,3], nrow = 21613, ncol = 1 )
+Y = tab1[ , 3]
+
+X1 = tab1[ , 1]
+X2 = tab1[ , 2]
+X3 = tab1[ , 4]
+X4 = tab1[ , 5]
+X5 = tab1[ , 6]
+X6 = tab1[ , 7]
+X7 = tab1[ , 8]
+X8 = tab1[ , 9]
+X9 = tab1[ , 10]
+X10 = tab1[ , 11]
+X11 = tab1[ , 12]
+X12 = tab1[ , 13]
+X13 = tab1[ , 14]
+X14 = tab1[ , 15]
+X15 = tab1[ , 16]
+X16 = tab1[ , 17]
+X17 = tab1[ , 18]
+X18 = tab1[ , 19]
+X19 = tab1[ , 20]
+X20 = tab1[ , 21]
+```
+
+We don't include `X2` because data type of `X2` is not a number.  
+
+```{r}
+df <- data.frame(Y,X1,X3,X4,X5,X6,X7,X8,X9,X10,X11,X12,X14,X15,X16,X17,X18,X19,X20)
+```
+
+```{r}
+model = lm(Y~. , data = df)
+summary(model)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(model)
+```
+
+The graph on the left at the top shows if residuals have non-linear patterns. The data are simulated in a way that meets the regression assumptions very well → good model.
+
+The graph on the right at the top shows if residuals are normally distributed. It looks like a line → good model.
+
+The graph on the left at bottom  shows if residuals are spread equally along the ranges of predictors. It has a horizontal line with equally (randomly) spread points → good model.
+
+There is no influential case for the last graph.
+
+
+
+
+

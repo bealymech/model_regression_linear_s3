@@ -1,0 +1,55 @@
+---
+title: "TP 3"
+author: "Bealy MECH"
+date: "10/18/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# I. Health application: diagnostis of a heart attack
+```{r}
+tab <- read.table(file="./SAheart.txt", header = TRUE, sep = ",", row.names = 1)
+names(tab)
+```
+
+```{r}
+dim(tab) #dimension of data set
+```
+
+```{r}
+head(tab)
+```
+
+```{r}
+tab$famhist <- as.numeric(tab$famhist == "Present")
+head(tab)
+```
+
+```{r}
+plot(tab, pch=20, col=rgb(0, 1, 0.5))
+```
+
+```{r}
+pairs(tab[,-5],pch=22,bg=c("red","blue")[unclass(factor(tab[,"chd"]))])
+```
+
+```{r}
+plot(tab$chd~tab$obesity,xlim=c(15,40), col="purple")
+```
+
+```{r}
+cor(tab)
+```
+
+```{r}
+library(corrplot)
+```
+
+```{r}
+corrplot(cor(tab), is.corr = TRUE, method = "ellipse", number.cex = .6, addCoef.col = "black")
+```
+
+

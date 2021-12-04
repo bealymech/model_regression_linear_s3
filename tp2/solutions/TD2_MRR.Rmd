@@ -1,0 +1,126 @@
+---
+title: "Travaux Pratiques - Modèl de Régression régularisée"
+author: "Bealy MECH"
+date: "10/4/2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## I. Test of significativity and model selection
+a) Analyze and study the following instructions. Specify the underlaying theoretical model.
+```{r}
+n = 100; 
+X = cbind(((1:n)/n)^3, ((1:n)/n)^3); 
+Y = X%*%c(1, 1)+rnorm(n)/4;
+res = summary(lm(Y~X)); 
+print(res);  
+print(res$coef[2, 4]);
+```
+
+Compare the results provided by a multiple regression model and the results computed independently using two simple models. Conclusion.
+```{r}
+reg1 = lm(Y~X[, 1]);
+print(summary(reg1));
+```
+
+```{r}
+reg2 = lm(Y~X[,2]);
+print(summary(reg2));
+```
+
+b) Execute the previous instructions several times (2 or 3 times) and describe the behaviour of the estimators of the coefficients. Compute the empirical correlation matrix. Instruction `cor()`.
+```{r}
+cor(X[,1], X[,2])
+```
+
+## II Model selection in a linear regression framework
+
+```{r}
+df <- read.table(file = "./UsCrimeInfo.txt", header = TRUE, sep = ";", dec = ".")
+df
+```
+
+
+```{r}
+tab = read.table(file="./UsCrime.txt", header=TRUE, sep = ";", dec = ".")
+dim(tab)  # dimension of the dataset
+```
+```{r}
+names(tab)
+```
+
+```{r}
+Y = tab[,1]
+X = tab[,2:14]
+pairs(tab)
+```
+
+```{r}
+cor(tab)
+```
+
+```{r}
+library(corrplot)
+```
+
+```{r}
+corrplot(cor(tab), method = "square")
+```
+
+```{r}
+t(X)
+```
+
+### A. Multiple regression model.
+a)
+```{r}
+reg=lm("R~.", data=tab)
+summary(reg)
+```
+
+```{r}
+RSS = sum((tab$R - reg$fit)^2)
+print(RSS)
+```
+
+
+## III RIDGE and LASSO penalized regression.
+### A. Simulated data. Illustration.
+
+a) Execute and comments the results using the following instructions.
+
+```{r}
+rm(list=ls()); n=10000; p=5;
+X=matrix(rnorm(n*(p)),nrow=n,ncol=p); X=scale(X)*sqrt(n/(n-1));
+beta=matrix(10*rev(1:p),nrow=p,ncol=1); print(beta)
+epsi=rnorm(n,1/n^2); 
+Y=X%*%beta +epsi;
+Z=cbind(Y, data.frame(X)); 
+Z=data.frame(Z);
+```
+
+```{r}
+library(lars);
+modlasso=lars(X,Y,type="lasso"); attributes(modlasso);
+```
+
+```{r}
+par(mfrow=c(1,2));
+plot(modlasso); plot(c(modlasso$lambda,0),pch=16,type="b",col="blue"); grid()
+```
+
+```{r}
+print(coef(modlasso));
+coef=predict.lars(modlasso, X, type="coefficients", mode="lambda", s=2500);
+coeflasso=coef$coefficients;
+par(mfrow=c(1,1)); barplot(coeflasso, main="lasso, l=1", col="cyan");
+```
+
+
+

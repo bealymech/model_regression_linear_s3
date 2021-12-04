@@ -1,0 +1,319 @@
+---
+title: "Practical session - Modèles de Régression linéaire"
+author: "Bealy MECH"
+date: "9/20/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls()); graphics.off()
+```
+
+# Some premilinary exerecices using R
+##  1. Vector manipulation. 
+Create a vector called `exp2` storing the 20 first elements of the previous expression.
+```{r}
+n <- 20
+exp2 <- function(x) {
+  v <- vector()
+  for (k in 0:(n-1)) {
+    v[k-1] <- (x**k)/factorial(k)
+  }
+  return (v)
+}
+v <- exp2(2)
+```
+
+Remove all the values lower than 10^(-8)
+```{r}
+vector_exp2 <- v[!v < 10^(-8)]
+sum(vector_exp2)
+```
+
+Compute an approximation of $e^2$.
+```{r}
+exp2 <- vector(mode = "numeric", length = 20)
+for(k in 0:19){
+  exp2[k+1] <- (2**k)/factorial(k)
+}
+print(sum(exp2[!exp2 < 10^(-8)]))
+```
+
+Compare the result
+```{r}
+exp(2)
+```
+
+## 2. Data simulation.
+Use the function `rnorm` ( `?rnorm` to get some help ) to simulate a vector $X$ of size 100 drawn from a Gaussian law $N$(2, 1), with a mean equaled to 2 and a variance equaled to 1. 
+```{r}
+x <- rnorm(100, mean = 2, sd = 1)
+print(x)
+```
+Compute a second vector $Y$ of the same size by multiplying $X$ with the value 9.8 and by adding a Gaussian noise of zero mean and a standard deviation equaled to 1/10.
+```{r}
+y <- 9.8*x + rnorm(100, 0, 1/10)
+print(y)
+```
+## 3. Read and write a text file.
+Compare the values of the data before and after the storage.
+```{r}
+# Store both X and Y vectors in a data frame
+df <- data.frame("X" = x, "Y" = y)
+# store the df in a text file on the hard disk
+write.table(df, file = "./observation.txt")
+
+# upload the data from the text file into the R environment 
+read.table(file= "./observation.txt", header = TRUE)
+```
+
+## Read and write a RData file.
+```{r}
+# Store the previous df using the instruction save 
+save(df, file="./xy.RData")
+
+# use load to upload the data from the previous file to the R environment 
+load(file = "./xy.RData", ex <- new.env())
+# To view the data frame after saving it
+ls.str(ex) 
+```
+
+## 5. Scatter Plot.
+```{r}
+plot(y, x)
+
+library(ggplot2)
+ggplot(df, aes(x=x, y=y)) + geom_point()
+```
+
+## 6. Histogram.
+Draw the histogram of X.
+```{r}
+hist(x, col = "green")
+```
+
+Using a small number of bins
+```{r}
+hist(x, col = "green", breaks = 2)
+```
+
+Using a large number of bins
+```{r}
+hist(x, col = "green", breaks = 20)
+```
+
+We can modify the numbers of bins by using the breaks parameter of the hist() function. When we specify the number of bins using the breaks parameter, then new size of each bin is automatically calculated by the hist() to a pretty value.
+
+## I. Ordinary Least Square (OLS) / Moindres Carré Ordinaires (MCO)
+### Real estate transactions in Paris Study.
+### Preliminary work
+
+```{r}
+tab <- data.frame(read.table(file = "./immo.txt", header = TRUE, sep = ";", dec = "."))
+
+head(tab)
+```
+```{r}
+names(tab)
+```
+```{r}
+tab[, 1]
+```
+```{r}
+tab$surface   # = tab[, 1]
+```
+```{r}
+tab[, c(1, 3)]
+```
+```{r}
+tab$prix
+```
+```{r}
+nrow(tab)
+```
+```{r}
+ncol(tab)
+```
+```{r}
+dim(tab)
+```
+```{r}
+plot(tab)
+```
+
+```{r}
+cor(x, y)
+```
+
+### First model using Ordinary Least Square (OLS)
+  a) Using appropriate matrix notations, recall the value of the estimated coefficients using the OLS method.
+  
+```{r}
+Y = matrix(tab[, 3], nrow = 20, ncol = 1)
+print(Y)
+```
+
+```{r}
+X = matrix(nrow = 20, ncol = 3)
+X[, 1] = rep(1, 20)    # rep 1 1 1 ... 1
+X[, 2] = tab[, 1]
+X[, 3] = tab[, 2]
+print(X)
+```
+
+```{r}
+belta <- solve(t(X)%*%X)%*%t(X)%*%Y
+print(belta)
+```
+
+ b) Compute with the help of the R software,
+```{r}
+modreg <- lm(prix~., data = tab)
+print(modreg)
+```
+```{r}
+summary(modreg)
+```
+```{r}
+attributes(modreg)
+```
+```{r}
+coef(modreg)
+```
+```{r}
+modreg$res
+```
+```{r}
+modreg$model
+```
+c) Plot the bivariate distribution
+
+```{r}
+Y1 <- X%*%belta
+Y1
+```
+```{r}
+plot(Y, Y1)
+grid(NA, 5, lwd = 2)
+reg <- lm(Y~Y1, data = tab)
+summary(reg)
+abline(reg, col = 2)
+```
+```{r}
+res <- resid(reg)
+res
+```
+```{r}
+hist(res, col = "yellow")
+```
+
+d) Recall the deﬁnition and the geometrical interpretation of the R-square
+
+```{r}
+R.square <- var(Y1)/var(Y)
+R.square
+```
+## II. The linear model. Study of ice cream consumptions.
+
+```{r}
+tab <- read.table(file = "./Icecreamdata.txt", header = TRUE, sep = ";", dec = ".")
+tab
+```
+```{r}
+object.size(tab)
+```
+```{r}
+dim(tab)
+```
+```{r}
+head(tab)
+```
+```{r}
+tail(tab)
+```
+
+```{r}
+nrow(tab)
+```
+```{r}
+ncol(tab)
+```
+```{r}
+names(tab)
+```
+
+1) Present and write formally the linear model to be study.
+```{r}
+Y <- matrix(tab[, 1], nrow = 30, ncol = 1)
+Y
+```
+```{r}
+X <- matrix(nrow = 30, ncol = 4)
+X[, 1] = rep(1, 30)
+X[, 2] = tab[, 2]
+X[, 3] = tab[, 3]
+X[, 4] = tab[, 4]
+X
+```
+
+b) 
+```{r}
+beta <- solve(t(X)%*%X)%*%t(X)%*%Y
+beta
+```
+
+c) 
+```{r}
+Y1 <- X%*%beta
+plot(Y, Y1)
+reg <- lm(Y~Y1, data = tab)
+abline(reg, col = 4)
+```
+
+d)
+```{r}
+res <- resid(reg)
+hist(res, col = "yellow")
+```
+
+```{r}
+tab = read.csv("./housedata.csv")
+df = data.frame(tab)
+df
+```
+
+```{r}
+model.fit = lm(price~. , data = df)
+summary(model.fit)
+```
+
+# II. The linear model. Study of ice cream consumptions.
+
+```{r}
+tab = read.table(file = "./Icecreamdata.txt", header = TRUE, sep = ";", dec = ".")
+tab
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
